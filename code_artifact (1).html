@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>올림·버림·반올림 칠판 제시용 연습기</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn {
+            animation: fadeIn 0.25s ease-out forwards;
+        }
+        .reveal-box {
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s ease;
+        }
+        .reveal-box:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.12);
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col justify-between selection:bg-indigo-500 selection:text-white bg-slate-100 font-sans">
+
+    <!-- Top Minimal Toolbar for Blackboard/Projector -->
+    <header class="no-print bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+            <!-- Left: Settings -->
+            <div class="flex items-center gap-3 flex-wrap">
+                <!-- Expression Mode Switcher -->
+                <div class="flex bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold">
+                    <button id="btn-mode-from" onclick="setExpressMode('from')" class="px-3 py-1.5 rounded-lg transition bg-white text-indigo-600 shadow-sm">
+                        ~에서
+                    </button>
+                    <button id="btn-mode-to" onclick="setExpressMode('to')" class="px-3 py-1.5 rounded-lg transition text-slate-600 hover:text-slate-900">
+                        ~까지
+                    </button>
+                </div>
+
+                <!-- Position Select -->
+                <select id="target-position" onchange="onPositionChange()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer">
+                    <option value="ones">1의 자리에서 (십의 자리까지)</option>
+                    <option value="tens">십의 자리에서 (백의 자리까지)</option>
+                    <option value="hundreds">백의 자리에서 (천의 자리까지)</option>
+                    <option value="thousands">천의 자리에서 (만의 자리까지)</option>
+                    <option value="dec1" selected>소수 첫째 자리에서 (일의 자리까지)</option>
+                    <option value="dec2">소수 둘째 자리에서 (소수 첫째 자리까지)</option>
+                    <option value="dec3">소수 셋째 자리에서 (소수 둘째 자리까지)</option>
+                </select>
+
+                <!-- Operations Checkboxes -->
+                <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold">
+                    <label class="flex items-center gap-1 cursor-pointer select-none">
+                        <input type="checkbox" id="chk-ceil" checked onchange="renderCard()" class="w-3.5 h-3.5 rounded text-indigo-600 focus:ring-indigo-500">
+                        <span>올림</span>
+                    </label>
+                    <label class="flex items-center gap-1 cursor-pointer select-none">
+                        <input type="checkbox" id="chk-floor" checked onchange="renderCard()" class="w-3.5 h-3.5 rounded text-indigo-600 focus:ring-indigo-500">
+                        <span>버림</span>
+                    </label>
+                    <label class="flex items-center gap-1 cursor-pointer select-none">
+                        <input type="checkbox" id="chk-round" checked onchange="renderCard()" class="w-3.5 h-3.5 rounded text-indigo-600 focus:ring-indigo-500">
+                        <span>반올림</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Right Controls -->
+            <div class="flex items-center gap-2">
+                <button onclick="revealAllAnswers(true)" class="text-xs font-bold px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition">
+                    <i class="fa-solid fa-eye mr-1"></i> 정답 공개
+                </button>
+                <button onclick="revealAllAnswers(false)" class="text-xs font-bold px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 transition">
+                    <i class="fa-solid fa-eye-slash mr-1"></i> 다시 가리기
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Presentation Card Container -->
+    <main class="max-w-2xl mx-auto px-4 py-8 sm:py-12 flex-1 w-full flex flex-col justify-center items-center">
+
+        <!-- Classroom Presentation Card -->
+        <div class="w-full bg-white rounded-3xl border border-slate-200 shadow-xl p-6 sm:p-10 space-y-8 relative">
+            
+            <!-- Card Top Header: Number Input + Badge -->
+            <div class="flex items-center justify-between border-b border-slate-100 pb-6 gap-4">
+                <div class="flex items-center gap-3 flex-1">
+                    <span class="w-10 h-10 rounded-xl bg-slate-900 text-white font-black text-xl flex items-center justify-center shrink-0 shadow">
+                        Q
+                    </span>
+                    <!-- Directly Editable Big Number Input -->
+                    <div class="relative flex-1">
+                        <input type="text" id="direct-number-input" value="3.14" oninput="onNumberInput(this.value)" placeholder="숫자 입력"
+                            class="w-full text-4xl sm:text-5xl font-black text-slate-900 font-mono tracking-tight bg-slate-50 hover:bg-slate-100 focus:bg-white border-2 border-dashed border-indigo-200 focus:border-indigo-500 rounded-2xl px-4 py-2 outline-none transition shadow-inner">
+                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none no-print hidden sm:inline">
+                            ✏️ 직접 입력
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Position Badge -->
+                <span id="badge-position-label" class="px-4 py-2.5 rounded-2xl text-sm sm:text-base font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 shrink-0 shadow-sm">
+                    소수 첫째 자리에서
+                </span>
+            </div>
+
+            <!-- Operations Answer Rows -->
+            <div id="ops-container" class="space-y-4">
+                <!-- Dynamically generated rows -->
+            </div>
+        </div>
+
+        <p class="text-xs text-slate-400 mt-4 text-center">
+            💡 숫자 칸(예: 3.14)을 직접 클릭해 원하는 숫자로 바꿀 수 있습니다. 빈칸 박스를 클릭하면 답이 나옵니다.
+        </p>
+
+    </main>
+
+    <footer class="no-print bg-white border-t border-slate-200 py-3 text-center text-xs text-slate-400">
+        <p>© 칠판/전자칠판 제시용 수학 어림하기 연습기</p>
+    </footer>
+
+    <script>
+        // --- APP STATE ---
+        let expressionMode = 'from'; // 'from' (~에서) or 'to' (~까지)
+        let currentNumber = 3.14;
+        let revealedStates = { ceil: false, floor: false, round: false };
+
+        const POS_SPECS = {
+            ones: { from: '1의 자리에서', to: '십의 자리까지' },
+            tens: { from: '십의 자리에서', to: '백의 자리까지' },
+            hundreds: { from: '백의 자리에서', to: '천의 자리까지' },
+            thousands: { from: '천의 자리에서', to: '만의 자리까지' },
+            dec1: { from: '소수 첫째 자리에서', to: '일의 자리까지' },
+            dec2: { from: '소수 둘째 자리에서', to: '소수 첫째 자리까지' },
+            dec3: { from: '소수 셋째 자리에서', to: '소수 둘째 자리까지' }
+        };
+
+        function computeOperation(num, posKey, opType) {
+            if (isNaN(num)) return '-';
+
+            if (posKey === 'ones') {
+                if (opType === 'ceil') return (Math.ceil(num / 10) * 10).toString();
+                if (opType === 'floor') return (Math.floor(num / 10) * 10).toString();
+                if (opType === 'round') return (Math.round(num / 10) * 10).toString();
+            } else if (posKey === 'tens') {
+                if (opType === 'ceil') return (Math.ceil(num / 100) * 100).toString();
+                if (opType === 'floor') return (Math.floor(num / 100) * 100).toString();
+                if (opType === 'round') return (Math.round(num / 100) * 100).toString();
+            } else if (posKey === 'hundreds') {
+                if (opType === 'ceil') return (Math.ceil(num / 1000) * 1000).toString();
+                if (opType === 'floor') return (Math.floor(num / 1000) * 1000).toString();
+                if (opType === 'round') return (Math.round(num / 1000) * 1000).toString();
+            } else if (posKey === 'thousands') {
+                if (opType === 'ceil') return (Math.ceil(num / 10000) * 10000).toString();
+                if (opType === 'floor') return (Math.floor(num / 10000) * 10000).toString();
+                if (opType === 'round') return (Math.round(num / 10000) * 10000).toString();
+            } else if (posKey === 'dec1') {
+                if (opType === 'ceil') return Math.ceil(num).toString();
+                if (opType === 'floor') return Math.floor(num).toString();
+                if (opType === 'round') return Math.round(num).toString();
+            } else if (posKey === 'dec2') {
+                const factor = 10;
+                if (opType === 'ceil') return (Math.ceil((num + Number.EPSILON) * factor) / factor).toFixed(1);
+                if (opType === 'floor') return (Math.floor((num + Number.EPSILON) * factor) / factor).toFixed(1);
+                if (opType === 'round') return (Math.round((num + Number.EPSILON) * factor) / factor).toFixed(1);
+            } else if (posKey === 'dec3') {
+                const factor = 100;
+                if (opType === 'ceil') return (Math.ceil((num + Number.EPSILON) * factor) / factor).toFixed(2);
+                if (opType === 'floor') return (Math.floor((num + Number.EPSILON) * factor) / factor).toFixed(2);
+                if (opType === 'round') return (Math.round((num + Number.EPSILON) * factor) / factor).toFixed(2);
+            }
+            return '-';
+        }
+
+        function setExpressMode(mode) {
+            expressionMode = mode;
+            const btnFrom = document.getElementById('btn-mode-from');
+            const btnTo = document.getElementById('btn-mode-to');
+
+            if (mode === 'from') {
+                btnFrom.className = "px-3 py-1.5 rounded-lg transition bg-white text-indigo-600 shadow-sm";
+                btnTo.className = "px-3 py-1.5 rounded-lg transition text-slate-600 hover:text-slate-900";
+            } else {
+                btnTo.className = "px-3 py-1.5 rounded-lg transition bg-white text-indigo-600 shadow-sm";
+                btnFrom.className = "px-3 py-1.5 rounded-lg transition text-slate-600 hover:text-slate-900";
+            }
+            renderCard();
+        }
+
+        function onPositionChange() {
+            revealedStates = { ceil: false, floor: false, round: false };
+            renderCard();
+        }
+
+        function onNumberInput(val) {
+            const parsed = parseFloat(val.trim());
+            currentNumber = isNaN(parsed) ? 0 : parsed;
+            revealedStates = { ceil: false, floor: false, round: false };
+            renderCard(false);
+        }
+
+        function toggleAnswer(opType) {
+            revealedStates[opType] = !revealedStates[opType];
+            renderCard(false);
+        }
+
+        function revealAllAnswers(show) {
+            revealedStates = { ceil: show, floor: show, round: show };
+            renderCard(false);
+        }
+
+        function renderCard() {
+            const posKey = document.getElementById('target-position').value;
+            const spec = POS_SPECS[posKey];
+
+            const showCeil = document.getElementById('chk-ceil').checked;
+            const showFloor = document.getElementById('chk-floor').checked;
+            const showRound = document.getElementById('chk-round').checked;
+
+            // Update badge text
+            document.getElementById('badge-position-label').innerText = (expressionMode === 'from') ? spec.from : spec.to;
+
+            const container = document.getElementById('ops-container');
+            container.innerHTML = '';
+
+            const createRow = (opType, label, badgeColor, icon) => {
+                const isRevealed = !!revealedStates[opType];
+                const answerVal = computeOperation(currentNumber, posKey, opType);
+
+                return `
+                    <div class="flex items-center justify-between gap-4 text-base sm:text-lg">
+                        <div class="w-28 font-bold text-slate-800 flex items-center gap-2 shrink-0">
+                            <span class="${badgeColor} text-white w-7 h-7 rounded-full text-xs flex items-center justify-center shadow-sm">${icon}</span>
+                            <span>${label} :</span>
+                        </div>
+                        
+                        <div onclick="toggleAnswer('${opType}')" 
+                            class="reveal-box ${isRevealed ? 'bg-indigo-50/50 border-indigo-300' : 'bg-slate-50 hover:bg-slate-100/80 border-indigo-200 border-dashed'} flex-1 py-3 px-4 rounded-2xl border-2 flex items-center justify-between transition min-h-[56px]">
+                            ${isRevealed ? `
+                                <span class="font-extrabold font-mono text-2xl sm:text-3xl text-indigo-600 animate-fadeIn">${answerVal}</span>
+                                <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100 shadow-sm">정답</span>
+                            ` : `
+                                <span class="text-sm text-slate-400 font-medium flex items-center gap-1.5">
+                                    <i class="fa-solid fa-lock text-slate-300"></i> 빈칸 (클릭하여 정답 보기)
+                                </span>
+                                <i class="fa-solid fa-chevron-down text-sm text-slate-300"></i>
+                            `}
+                        </div>
+                    </div>
+                `;
+            };
+
+            if (showCeil) container.innerHTML += createRow('ceil', '올림', 'bg-amber-500', '▲');
+            if (showFloor) container.innerHTML += createRow('floor', '버림', 'bg-blue-500', '▼');
+            if (showRound) container.innerHTML += createRow('round', '반올림', 'bg-indigo-600', '◆');
+        }
+
+        // Initialize view on page load
+        window.onload = function() {
+            renderCard();
+        };
+    </script>
+</body>
+</html>
